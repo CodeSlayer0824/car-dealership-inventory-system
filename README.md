@@ -114,7 +114,7 @@ npm run build
 
 Current test report:
 
-- Backend: 9 passing tests across API integration, authentication, role enforcement, atomic stock operations, and database constraints/migrations.
+- Backend: 11 passing tests across API integration, authentication, role enforcement, atomic stock operations, currency precision, and database constraints/migrations.
 - Frontend: 6 passing component/auth-flow tests covering search filters, out-of-stock purchase state, sign-in, registration, and API error feedback.
 - Dependency audit at implementation time: no known vulnerabilities (`npm audit`).
 
