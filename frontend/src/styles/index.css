@@ -1,0 +1,62 @@
+@import "tailwindcss";
+
+@theme {
+  --color-ink: #101a2b;
+  --color-canvas: #f4f6f9;
+  --color-accent: #d78043;
+  --font-sans: Inter, ui-sans-serif, system-ui, sans-serif;
+  --shadow-card: 0 14px 40px rgb(16 26 43 / 6%);
+}
+
+:root {
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  color: #101a2b;
+  background: #f4f6f9;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  min-width: 320px;
+  margin: 0;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+@layer components {
+  .field-label {
+    @apply flex flex-col gap-1.5 text-xs font-bold text-slate-600;
+  }
+
+  .field-input {
+    @apply min-h-10 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-ink outline-none transition placeholder:font-normal placeholder:text-slate-400 focus:border-accent focus:ring-2 focus:ring-accent/15;
+  }
+
+  .button-primary {
+    @apply min-h-10 rounded-xl bg-ink px-4 py-2.5 text-sm font-bold text-white transition hover:bg-slate-700 disabled:cursor-wait disabled:opacity-60;
+  }
+
+  .button-secondary {
+    @apply min-h-10 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-600 transition hover:border-slate-400 hover:text-ink;
+  }
+
+  .eyebrow {
+    @apply text-[10px] font-black uppercase tracking-[0.24em] text-accent;
+  }
+}
+
+.auth-page {
+  @apply flex min-h-screen items-center justify-center bg-ink px-5 py-12;
+  background-image: radial-gradient(circle at 85% 15%, rgb(215 128 67 / 25%), transparent 32%), linear-gradient(135deg, #101a2b 0%, #172b42 100%);
+}
+
+.auth-card {
+  @apply w-full max-w-md rounded-3xl bg-white p-7 shadow-2xl sm:p-10;
+}
+
+.auth-card h1 {
+  @apply text-3xl font-black tracking-tight text-ink;
+}
