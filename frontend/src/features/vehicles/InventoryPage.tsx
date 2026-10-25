@@ -129,7 +129,7 @@ export function InventoryPage() {
 
   return (
     <main className="mx-auto max-w-7xl px-5 py-8 lg:px-8 lg:py-12">
-      <section className="collection-hero" aria-label="Northstar vehicle collection">
+      <section className="collection-hero" aria-label="Hegde Motors vehicle collection">
         <img
           className="collection-hero__image"
           src="/images/hero-drive.jpg"
@@ -141,7 +141,7 @@ export function InventoryPage() {
         />
         <div className="collection-hero__shade" />
         <div className="collection-hero__content">
-          <p className="eyebrow text-orange-300">NORTHSTAR MOTOR COMPANY</p>
+          <p className="eyebrow text-orange-300">HEGDE MOTORS</p>
           <h1 className="mt-4 max-w-2xl text-4xl font-black leading-[1.02] tracking-tight text-white sm:text-5xl lg:text-6xl">
             A better drive
             <br />
@@ -275,9 +275,6 @@ export function InventoryPage() {
         </div>
       )}
       </section>
-      <footer className="mt-16 border-t border-slate-200 py-6 text-center text-xs text-slate-500">
-        Inventory updates are reflected as soon as a purchase or restock is completed.
-      </footer>
     </main>
   );
 }

@@ -1,6 +1,7 @@
 import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useAuth } from "../features/auth/AuthProvider";
 import { useCart } from "../features/cart/CartProvider";
+import { SiteFooter } from "./SiteFooter";
 
 export function AppLayout() {
   const { user, logout } = useAuth();
@@ -11,15 +12,12 @@ export function AppLayout() {
       isActive ? "bg-white/10 text-white" : "text-slate-300 hover:bg-white/5 hover:text-white"
     }`;
   return (
-    <div className="min-h-screen bg-canvas">
+    <div className="flex min-h-screen flex-col bg-canvas">
       <header className="border-b border-white/10 bg-ink text-white">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-x-4 gap-y-3 px-4 py-3 sm:px-5 sm:py-4 lg:px-8">
           <Link to="/inventory" className="flex items-center gap-3">
-            <span className="grid h-10 w-10 place-items-center rounded-xl bg-accent text-sm font-black tracking-tight">N</span>
-            <span>
-              <span className="block text-sm font-black uppercase tracking-[0.16em]">Northstar</span>
-              <span className="block text-[10px] font-semibold uppercase tracking-[0.24em] text-slate-400">Motor Company</span>
-            </span>
+            <span className="grid h-10 w-10 place-items-center rounded-xl bg-accent text-sm font-black tracking-tight">H</span>
+            <span className="block text-sm font-black uppercase tracking-[0.16em]">Hegde Motors</span>
           </Link>
           <div className="flex items-center gap-1 sm:gap-2">
             <NavLink to="/inventory" className={linkClass}>Inventory</NavLink>
@@ -49,7 +47,10 @@ export function AppLayout() {
           </div>
         </div>
       </header>
-      <Outlet />
+      <div className="flex-1">
+        <Outlet />
+      </div>
+      <SiteFooter />
     </div>
   );
 }

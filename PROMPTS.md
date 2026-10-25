@@ -12,3 +12,4 @@ Give me the plan first so I can review it before we generate any files.
 
 Scope confirmation from the planning discussion:
 vehicleManagementAccess=literal_api, purchaseHistory=stock_only, adminProvisioning=env_seed
+
