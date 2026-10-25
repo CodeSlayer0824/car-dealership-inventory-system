@@ -7,6 +7,7 @@ interface AuthContextValue {
   user: AuthUser | null;
   login: (email: string, password: string) => Promise<void>;
   register: (name: string, email: string, password: string) => Promise<void>;
+  updateName: (name: string) => Promise<void>;
   logout: () => void;
 }
 
@@ -27,6 +28,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       },
       async register(name, email, password) {
         persist(await authApi.register(name, email, password), setUser);
+      },
+      async updateName(name) {
+        const result = await authApi.updateName(name);
+        const session = loadSession();
+        if (!session) throw new Error("Your session has expired. Please sign in again.");
+        const updatedUser = { ...result.user };
+        saveSession({ token: session.token, user: updatedUser });
+        setUser(updatedUser);
       },
       logout() {
         clearSession();

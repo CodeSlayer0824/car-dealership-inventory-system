@@ -1,5 +1,10 @@
 import type Database from "better-sqlite3";
 
+function isDuplicateVehicleError(error: unknown): boolean {
+  return typeof error === "object" && error !== null &&
+    "code" in error && error.code === "SQLITE_CONSTRAINT_UNIQUE";
+}
+
 export interface VehicleRecord {
   id: number;
   make: string;
@@ -59,12 +64,21 @@ export class VehiclesRepository {
     priceCents: number;
     quantity: number;
   }): VehicleRecord {
-    const result = this.db
-      .prepare(
-        "INSERT INTO vehicles (make, model, category, price_cents, quantity) VALUES (?, ?, ?, ?, ?)",
-      )
-      .run(input.make, input.model, input.category, input.priceCents, input.quantity);
-    return this.findById(Number(result.lastInsertRowid))!;
+    try {
+      const result = this.db
+        .prepare(
+          "INSERT INTO vehicles (make, model, category, price_cents, quantity) VALUES (?, ?, ?, ?, ?)",
+        )
+        .run(input.make.trim(), input.model.trim(), input.category.trim(), input.priceCents, input.quantity);
+      const vehicle = this.findById(Number(result.lastInsertRowid));
+      if (!vehicle) throw new Error("New vehicle could not be loaded");
+      return vehicle;
+    } catch (error) {
+      if (isDuplicateVehicleError(error)) {
+        throw new Error("A vehicle with this make, model, category, and price already exists", { cause: error });
+      }
+      throw error;
+    }
   }
 
   update(
@@ -88,15 +102,33 @@ export class VehiclesRepository {
     if (updates.length) {
       const assignments = updates.map(([column]) => `${column} = ?`).join(", ");
       const values = updates.map(([, value]) => value as string | number);
-      this.db
-        .prepare(`UPDATE vehicles SET ${assignments}, updated_at = CURRENT_TIMESTAMP WHERE id = ?`)
-        .run(...values, id);
+      try {
+        this.db
+          .prepare(`UPDATE vehicles SET ${assignments}, updated_at = CURRENT_TIMESTAMP WHERE id = ?`)
+          .run(...values, id);
+      } catch (error) {
+        if (isDuplicateVehicleError(error)) {
+          throw new Error("A vehicle with this make, model, category, and price already exists", { cause: error });
+        }
+        throw error;
+      }
     }
     return this.findById(id);
   }
 
-  delete(id: number): boolean {
-    return this.db.prepare("DELETE FROM vehicles WHERE id = ?").run(id).changes > 0;
+  delete(id: number): "deleted" | "not_found" | "pending_order" {
+    const result = this.db.prepare(
+      `DELETE FROM vehicles
+       WHERE id = ?
+         AND NOT EXISTS (
+           SELECT 1 FROM order_items
+           JOIN orders ON orders.id = order_items.order_id
+           WHERE order_items.vehicle_id = vehicles.id AND orders.status = 'pending'
+         )`,
+    ).run(id);
+    if (result.changes) return "deleted";
+    if (!this.findById(id)) return "not_found";
+    return "pending_order";
   }
 
   purchaseOne(id: number): number {

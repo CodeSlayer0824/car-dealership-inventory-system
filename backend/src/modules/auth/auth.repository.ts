@@ -29,6 +29,12 @@ export class AuthRepository {
       .get(id) as Pick<UserRecord, "id" | "name" | "email" | "role"> | undefined;
   }
 
+  updateName(id: number, name: string): boolean {
+    return this.db
+      .prepare("UPDATE users SET name = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?")
+      .run(name, id).changes > 0;
+  }
+
   create(name: string, email: string, passwordHash: string): number {
     const role = this.db.prepare("SELECT id FROM roles WHERE name = 'customer'").get() as
       | { id: number }

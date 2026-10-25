@@ -83,17 +83,17 @@ describe("Car dealership API", () => {
     expect(response.body.error.code).toBe("INVALID_JSON");
   });
 
-  it("creates, updates, searches, and purchases vehicles", async () => {
+  it("allows admins to manage vehicles and customers to search and purchase", async () => {
     const created = await request(app)
       .post("/api/vehicles")
-      .set("Authorization", `Bearer ${customerToken}`)
+      .set("Authorization", `Bearer ${adminToken}`)
       .send({ make: "Toyota", model: "Corolla", category: "Sedan", price: 24500, quantity: 2 });
     expect(created.status).toBe(201);
     const id = created.body.vehicle.id as number;
 
     const updated = await request(app)
       .put(`/api/vehicles/${id}`)
-      .set("Authorization", `Bearer ${customerToken}`)
+      .set("Authorization", `Bearer ${adminToken}`)
       .send({ price: 23999, quantity: 2 });
     expect(updated.status).toBe(200);
     expect(updated.body.vehicle.price).toBe(23999);
@@ -106,23 +106,31 @@ describe("Car dealership API", () => {
 
     const purchase = await request(app)
       .post(`/api/vehicles/${id}/purchase`)
-      .set("Authorization", `Bearer ${customerToken}`);
-    expect(purchase.status).toBe(200);
+      .set("Authorization", `Bearer ${customerToken}`)
+      .set("Idempotency-Key", "legacy-purchase-0001");
+    expect(purchase.status).toBe(201);
     expect(purchase.body.vehicle.quantity).toBe(1);
+    expect(purchase.body.order.status).toBe("pending");
   });
 
   it("prevents purchasing out-of-stock vehicles and restricts admin actions", async () => {
     const created = await request(app)
       .post("/api/vehicles")
-      .set("Authorization", `Bearer ${customerToken}`)
+      .set("Authorization", `Bearer ${adminToken}`)
       .send({ make: "Honda", model: "Civic", category: "Sedan", price: 26000, quantity: 1 });
     const id = created.body.vehicle.id as number;
 
     const purchases = await Promise.all([
-      request(app).post(`/api/vehicles/${id}/purchase`).set("Authorization", `Bearer ${customerToken}`),
-      request(app).post(`/api/vehicles/${id}/purchase`).set("Authorization", `Bearer ${customerToken}`),
+      request(app)
+        .post(`/api/vehicles/${id}/purchase`)
+        .set("Authorization", `Bearer ${customerToken}`)
+        .set("Idempotency-Key", "parallel-purchase-0001"),
+      request(app)
+        .post(`/api/vehicles/${id}/purchase`)
+        .set("Authorization", `Bearer ${customerToken}`)
+        .set("Idempotency-Key", "parallel-purchase-0002"),
     ]);
-    expect(purchases.map((response) => response.status).sort()).toEqual([200, 409]);
+    expect(purchases.map((response) => response.status).sort()).toEqual([201, 409]);
 
     const customerRestock = await request(app)
       .post(`/api/vehicles/${id}/restock`)
@@ -141,7 +149,7 @@ describe("Car dealership API", () => {
   it("allows only admins to delete vehicles", async () => {
     const created = await request(app)
       .post("/api/vehicles")
-      .set("Authorization", `Bearer ${customerToken}`)
+      .set("Authorization", `Bearer ${adminToken}`)
       .send({ make: "Ford", model: "Focus", category: "Hatchback", price: 18000, quantity: 1 });
     const id = created.body.vehicle.id as number;
 

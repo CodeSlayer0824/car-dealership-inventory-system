@@ -5,10 +5,13 @@ A full-stack dealership inventory app with a TypeScript/Express REST API, persis
 ## Features
 
 - Customer registration and login with bcrypt password hashing and JWT bearer authentication.
-- Role-based API controls: authenticated users can create and update vehicles; admins can additionally delete and restock.
+- Role-based API controls: admins manage inventory and view reporting; customers shop and manage only their own orders.
 - Search by make, model, category, and inclusive minimum/maximum price.
-- Atomic purchases that cannot reduce stock below zero; purchases of out-of-stock vehicles return a conflict.
-- Responsive inventory cards, search filters, vehicle forms, and visible loading and error states.
+- Customer cart with stock-limited quantities, checkout, and order confirmation.
+- Transactional, idempotent checkout and pending-order cancellation with exactly-once stock restoration.
+- Customer order history and profile-name editing; admin dashboard and complete order history.
+- Normalized duplicate-vehicle prevention and an admin edit dialog.
+- Responsive inventory, cart, order, profile, and dashboard pages with visible loading and error states.
 
 ## Architecture
 
@@ -19,14 +22,18 @@ backend/
     server.ts                    Environment validation and HTTP lifecycle
     db/                          SQLite, numbered SQL migrations, admin seed
     middleware/                  Authentication, roles, and error handling
-    modules/auth/                Registration, login, password and JWT services
-    modules/vehicles/            Search, vehicle management, stock operations
+    modules/auth/                Registration, login, profile, password and JWT services
+    modules/orders/              Checkout, order history, cancellation and dashboard queries
+    modules/vehicles/            Search, admin vehicle management and stock operations
   tests/                         API integration and migration tests
 frontend/
   src/
     components/                  Layout, route guards, status messages
-    features/auth/               Auth state, login and registration pages
-    features/vehicles/           Inventory page, cards, filters, forms, API
+    features/auth/               Auth state, login, registration and profile
+    features/admin/              Admin dashboard and order history
+    features/cart/               Customer cart state, quantity controls and checkout
+    features/orders/             Customer order history and cancellation
+    features/vehicles/           Inventory, filters, vehicle forms, edit dialog and API
     lib/                         API client and session persistence
     styles/                      Tailwind theme and application styles
 ```
@@ -75,11 +82,20 @@ All routes are under `/api`. Successful auth responses return `{ "user": ..., "t
 | `POST` | `/auth/login` | Public | Authenticate and receive a JWT |
 | `GET` | `/vehicles` | Authenticated | List vehicles; accepts search query fields |
 | `GET` | `/vehicles/search` | Authenticated | Search by `make`, `model`, `category`, `minPrice`, `maxPrice` |
-| `POST` | `/vehicles` | Authenticated | Add a vehicle |
-| `PUT` | `/vehicles/:id` | Authenticated | Update vehicle fields |
+| `POST` | `/vehicles` | Admin | Add a vehicle |
+| `PUT` | `/vehicles/:id` | Admin | Update vehicle fields |
 | `DELETE` | `/vehicles/:id` | Admin | Delete a vehicle |
-| `POST` | `/vehicles/:id/purchase` | Authenticated | Purchase one unit |
+| `POST` | `/vehicles/:id/purchase` | Customer | Legacy one-unit purchase; provide an `Idempotency-Key` header |
 | `POST` | `/vehicles/:id/restock` | Admin | Add stock with `{ "quantity": 5 }` |
+| `GET` | `/auth/me` | Authenticated | Load the current user's profile |
+| `PATCH` | `/auth/me` | Authenticated | Update the current user's name with `{ "name": "..." }` |
+| `POST` | `/orders/checkout` | Customer | Confirm a cart with an `Idempotency-Key` header and `{ "items": [{ "vehicleId": 1, "quantity": 2 }] }` |
+| `GET` | `/orders/mine` | Customer | List only the current customer's orders |
+| `POST` | `/orders/:id/cancel` | Customer | Cancel the customer's eligible pending order |
+| `GET` | `/admin/dashboard` | Admin | Read customer, vehicle, and order totals |
+| `GET` | `/admin/orders` | Admin | List all orders, including cancelled orders |
+
+Checkout is order confirmation only; this application does not process payment. A repeated checkout with the same customer, idempotency key, and cart returns the original order. Reusing the key for a different cart is rejected. Cancellation is allowed only while an order is pending; cancellation keeps the order record and restores its stock atomically.
 
 Example vehicle body:
 
@@ -99,7 +115,11 @@ Validation errors use a consistent `{ "error": { "code": "...", "message": "..."
 
 - `roles`: unique role name (`customer`, `admin`).
 - `users`: name, case-insensitive unique email, password hash, role foreign key, and timestamps. Public registration always assigns `customer`.
-- `vehicles`: unique integer ID, make, model, category, non-negative `price_cents`, non-negative `quantity`, and timestamps. Make/model/category/price indexes support filtering.
+- `vehicles`: unique integer ID, make, model, category, non-negative `price_cents`, non-negative `quantity`, and timestamps. A unique expression index prevents duplicate make/model/category/price combinations after trimming and case-folding.
+- `orders`: customer, pending/cancelled status, creation time, and a customer-scoped idempotency key and cart hash.
+- `order_items`: order relation, vehicle reference where available, vehicle-description snapshot, quantity, and unit-price snapshot in cents.
+
+Migration `002_orders_and_vehicle_identity.sql` adds orders and the normalized vehicle index without resetting users, vehicles, or existing purchase data. Migrations run through the existing startup migration runner. Vehicle IDs are preserved; order item snapshots remain available if the referenced vehicle is later deleted.
 
 The initial admin is created only by the explicit seed script using environment credentials; the public API has no role-promotion endpoint.
 
@@ -112,11 +132,11 @@ npm test
 npm run build
 ```
 
-Current test report:
+Current verified test report:
 
-- Backend: 11 passing tests across API integration, authentication, role enforcement, atomic stock operations, currency precision, and database constraints/migrations.
-- Frontend: 6 passing component/auth-flow tests covering search filters, out-of-stock purchase state, sign-in, registration, and API error feedback.
-- Dependency audit at implementation time: no known vulnerabilities (`npm audit`).
+- Backend: 22 tests passed across 4 test files, covering checkout, idempotent retries, stock validation, order ownership, cancellation, role access, profile updates, duplicate vehicles, and migrations.
+- Frontend: 14 tests passed across 6 test files, covering cart and inventory role controls, profile loading and updating, and existing auth/search flows.
+- `npm run build`: backend and frontend production builds passed.
 
 The backend production entrypoint is `npm start -w backend` after `npm run build`. The frontend production bundle is in `frontend/dist`; use `npm run preview -w frontend` for a local production preview.
 
@@ -134,4 +154,4 @@ I used GitHub Copilot in VS Code to help interpret the supplied kata requirement
 
 ## Git and AI co-authorship
 
-The local Git history contains separate test-first, backend, and frontend/documentation commits. For AI-assisted commits, each commit includes the required AI `Co-authored-by` trailer from the kata instructions. No Git remote or public repository URL has been configured.
+For AI-assisted commits, include the configured `Co-authored-by` trailer. Do not commit `.env` files or the local SQLite database.

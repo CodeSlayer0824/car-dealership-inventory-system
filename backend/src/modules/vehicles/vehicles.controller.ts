@@ -7,6 +7,8 @@ import {
   updateVehicleSchema,
 } from "./vehicles.schemas.js";
 import { VehiclesService } from "./vehicles.service.js";
+import { OrdersService } from "../orders/orders.service.js";
+import { idempotencyKeySchema } from "../orders/orders.schemas.js";
 
 function parseId(value: string | string[] | undefined): number {
   if (typeof value !== "string") {
@@ -23,7 +25,7 @@ function failValidation(message: string): never {
   throw new AppError(400, message, "VALIDATION_ERROR");
 }
 
-export function vehiclesController(service: VehiclesService) {
+export function vehiclesController(service: VehiclesService, orders: OrdersService) {
   return {
     list: (request: Request, response: Response) => {
       const parsed = searchSchema.safeParse(request.query);
@@ -45,7 +47,17 @@ export function vehiclesController(service: VehiclesService) {
       response.status(204).end();
     },
     purchase: (request: Request, response: Response) => {
-      response.json({ vehicle: service.purchase(parseId(request.params.id)) });
+      if (!request.user) throw new AppError(401, "Authentication required", "UNAUTHENTICATED");
+      const vehicleId = parseId(request.params.id);
+      const idempotencyKey = idempotencyKeySchema.safeParse(request.header("Idempotency-Key"));
+      if (!idempotencyKey.success) {
+        throw new AppError(400, "A valid Idempotency-Key header is required", "VALIDATION_ERROR");
+      }
+      const result = orders.checkout(request.user.id, idempotencyKey.data, [{ vehicleId, quantity: 1 }]);
+      response.status(result.replayed ? 200 : 201).json({
+        vehicle: service.getById(vehicleId),
+        order: result.order,
+      });
     },
     restock: (request: Request, response: Response) => {
       const parsed = restockSchema.safeParse(request.body);

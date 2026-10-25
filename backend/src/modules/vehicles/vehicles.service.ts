@@ -26,22 +26,47 @@ export class VehiclesService {
     }).map(present);
   }
 
+  getById(id: number) {
+    const vehicle = this.repository.findById(id);
+    if (!vehicle) throw new AppError(404, "Vehicle not found", "VEHICLE_NOT_FOUND");
+    return present(vehicle);
+  }
+
   create(input: { make: string; model: string; category: string; price: number; quantity: number }) {
-    return present(this.repository.create({ ...input, priceCents: toPriceCents(input.price) }));
+    try {
+      return present(this.repository.create({ ...input, priceCents: toPriceCents(input.price) }));
+    } catch (error) {
+      if (error instanceof Error && error.message.startsWith("A vehicle with this make")) {
+        throw new AppError(409, error.message, "DUPLICATE_VEHICLE");
+      }
+      throw error;
+    }
   }
 
   update(id: number, input: Partial<{ make: string; model: string; category: string; price: number; quantity: number }>) {
     const { price, ...fields } = input;
-    const vehicle = this.repository.update(id, {
-      ...fields,
-      ...(price === undefined ? {} : { priceCents: toPriceCents(price) }),
-    });
+    let vehicle: VehicleRecord | undefined;
+    try {
+      vehicle = this.repository.update(id, {
+        ...fields,
+        ...(price === undefined ? {} : { priceCents: toPriceCents(price) }),
+      });
+    } catch (error) {
+      if (error instanceof Error && error.message.startsWith("A vehicle with this make")) {
+        throw new AppError(409, error.message, "DUPLICATE_VEHICLE");
+      }
+      throw error;
+    }
     if (!vehicle) throw new AppError(404, "Vehicle not found", "VEHICLE_NOT_FOUND");
     return present(vehicle);
   }
 
   delete(id: number): void {
-    if (!this.repository.delete(id)) throw new AppError(404, "Vehicle not found", "VEHICLE_NOT_FOUND");
+    const result = this.repository.delete(id);
+    if (result === "not_found") throw new AppError(404, "Vehicle not found", "VEHICLE_NOT_FOUND");
+    if (result === "pending_order") {
+      throw new AppError(409, "A vehicle with a pending order cannot be deleted", "VEHICLE_HAS_PENDING_ORDER");
+    }
   }
 
   purchase(id: number) {

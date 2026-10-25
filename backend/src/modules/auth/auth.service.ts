@@ -9,6 +9,19 @@ export class AuthService {
     private readonly jwtSecret: string,
   ) {}
 
+  profile(userId: number) {
+    const user = this.repository.findById(userId);
+    if (!user) throw new AppError(404, "User not found", "USER_NOT_FOUND");
+    return user;
+  }
+
+  updateProfileName(userId: number, name: string) {
+    if (!this.repository.updateName(userId, name)) {
+      throw new AppError(404, "User not found", "USER_NOT_FOUND");
+    }
+    return this.profile(userId);
+  }
+
   async register(input: { name: string; email: string; password: string }) {
     if (this.repository.findByEmail(input.email)) {
       throw new AppError(409, "An account with this email already exists", "EMAIL_EXISTS");

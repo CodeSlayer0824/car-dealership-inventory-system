@@ -3,7 +3,7 @@
 @theme {
   --color-ink: #101a2b;
   --color-canvas: #f4f6f9;
-  --color-accent: #d78043;
+  --color-accent: #a85520;
   --font-sans: Inter, ui-sans-serif, system-ui, sans-serif;
   --shadow-card: 0 14px 40px rgb(16 26 43 / 6%);
 }
@@ -16,6 +16,10 @@
   text-rendering: optimizeLegibility;
 }
 
+html {
+  scroll-behavior: smooth;
+}
+
 body {
   min-width: 320px;
   margin: 0;
@@ -24,6 +28,22 @@ body {
 button,
 input {
   font: inherit;
+}
+
+:focus-visible {
+  outline: 3px solid #a85520;
+  outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
 @layer components {
@@ -40,7 +60,11 @@ input {
   }
 
   .button-secondary {
-    @apply min-h-10 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-600 transition hover:border-slate-400 hover:text-ink;
+    @apply min-h-10 rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-bold text-slate-700 transition hover:border-slate-500 hover:text-ink;
+  }
+
+  .quantity-button {
+    @apply grid h-9 w-9 place-items-center rounded-lg border border-slate-300 bg-white text-lg font-bold text-ink transition hover:border-accent disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500;
   }
 
   .eyebrow {
@@ -59,4 +83,45 @@ input {
 
 .auth-card h1 {
   @apply text-3xl font-black tracking-tight text-ink;
+}
+
+.collection-hero {
+  @apply relative isolate mb-9 min-h-[360px] overflow-hidden rounded-3xl bg-ink shadow-2xl sm:min-h-[420px] lg:min-h-[460px];
+}
+
+.collection-hero__image,
+.collection-hero__shade {
+  @apply absolute inset-0 h-full w-full;
+}
+
+.collection-hero__image {
+  @apply object-cover object-[center_60%];
+}
+
+.collection-hero__shade {
+  background: linear-gradient(90deg, rgb(10 16 27 / 94%) 0%, rgb(10 16 27 / 76%) 40%, rgb(10 16 27 / 12%) 100%),
+    linear-gradient(0deg, rgb(10 16 27 / 28%), transparent 58%);
+}
+
+.collection-hero__content {
+  @apply relative z-10 flex min-h-[360px] max-w-3xl flex-col items-start justify-center px-7 py-12 sm:min-h-[420px] sm:px-12 lg:min-h-[460px] lg:px-16;
+}
+
+.hero-link {
+  @apply rounded-full border border-white/50 px-5 py-3 text-sm font-bold text-white transition hover:border-white hover:bg-white hover:text-ink;
+}
+
+.collection-hero__caption {
+  @apply absolute bottom-5 right-6 z-10 hidden text-[10px] font-bold uppercase tracking-[0.2em] text-white/80 md:block;
+}
+
+.auth-page .eyebrow {
+  color: #a85520;
+}
+
+@media (max-width: 640px) {
+  .collection-hero__shade {
+    background: linear-gradient(90deg, rgb(10 16 27 / 88%), rgb(10 16 27 / 48%)),
+      linear-gradient(0deg, rgb(10 16 27 / 32%), transparent 70%);
+  }
 }

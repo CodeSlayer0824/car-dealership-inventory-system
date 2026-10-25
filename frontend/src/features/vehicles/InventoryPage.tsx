@@ -2,12 +2,13 @@ import { useCallback, useEffect, useState } from "react";
 import { ErrorMessage } from "../../components/ErrorMessage";
 import { LoadingState } from "../../components/LoadingState";
 import { useAuth } from "../auth/AuthProvider";
+import { useCart } from "../cart/CartProvider";
 import type { Vehicle, VehicleFilters, VehicleInput } from "../../types/vehicle";
+import { vehicleImageForCategory } from "../cart/cartUtils";
 import {
   createVehicle,
   deleteVehicle,
   listVehicles,
-  purchaseVehicle,
   restockVehicle,
   updateVehicle,
 } from "./vehiclesApi";
@@ -26,7 +27,7 @@ function StockControls({
   const [busy, setBusy] = useState(false);
   return (
     <form
-      className="mt-3 flex items-center gap-2"
+      className="flex items-center gap-2"
       onSubmit={async (event) => {
         event.preventDefault();
         setBusy(true);
@@ -56,13 +57,15 @@ function StockControls({
 
 export function InventoryPage() {
   const { user } = useAuth();
+  const cart = useCart();
+  const isAdmin = user?.role === "admin";
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [filters, setFilters] = useState<VehicleFilters>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [busyId, setBusyId] = useState<number | null>(null);
   const [editing, setEditing] = useState<Vehicle | null>(null);
   const [formOpen, setFormOpen] = useState(false);
+  const [notice, setNotice] = useState("");
 
   const load = useCallback(async (activeFilters: VehicleFilters) => {
     setLoading(true);
@@ -80,16 +83,14 @@ export function InventoryPage() {
     void load(filters);
   }, [filters, load]);
 
-  async function purchase(vehicle: Vehicle) {
-    setBusyId(vehicle.id);
+  function addToCart(vehicle: Vehicle) {
     setError("");
+    setNotice("");
     try {
-      const updated = await purchaseVehicle(vehicle.id);
-      setVehicles((current) => current.map((item) => item.id === updated.id ? updated : item));
-    } catch (actionError) {
-      setError(actionError instanceof Error ? actionError.message : "Unable to complete purchase");
-    } finally {
-      setBusyId(null);
+      cart.add(vehicle.id, vehicle.quantity);
+      setNotice(`${vehicle.make} ${vehicle.model} added to your cart.`);
+    } catch (cartError) {
+      setError(cartError instanceof Error ? cartError.message : "Unable to add vehicle to cart");
     }
   }
 
@@ -128,32 +129,44 @@ export function InventoryPage() {
 
   return (
     <main className="mx-auto max-w-7xl px-5 py-8 lg:px-8 lg:py-12">
-      <section className="mb-8 flex flex-col justify-between gap-5 md:flex-row md:items-end">
-        <div>
-          <p className="eyebrow">THE COLLECTION</p>
-          <h1 className="mt-2 text-4xl font-black tracking-tight text-ink sm:text-5xl">Find your next drive.</h1>
-          <p className="mt-3 max-w-xl text-slate-500">Thoughtfully selected vehicles, ready for the road. Browse the current Northstar collection.</p>
-        </div>
-        <button
-          className="button-primary self-start md:self-auto"
-          onClick={() => {
-            setEditing(null);
-            setFormOpen(true);
+      <section className="collection-hero" aria-label="Northstar vehicle collection">
+        <img
+          className="collection-hero__image"
+          src="/images/hero-drive.jpg"
+          alt=""
+          fetchPriority="high"
+          onError={(event) => {
+            event.currentTarget.style.display = "none";
           }}
-        >
-          + Add vehicle
-        </button>
+        />
+        <div className="collection-hero__shade" />
+        <div className="collection-hero__content">
+          <p className="eyebrow text-orange-300">NORTHSTAR MOTOR COMPANY</p>
+          <h1 className="mt-4 max-w-2xl text-4xl font-black leading-[1.02] tracking-tight text-white sm:text-5xl lg:text-6xl">
+            A better drive
+            <br />
+            starts right here.
+          </h1>
+          <p className="mt-5 max-w-lg text-sm leading-6 text-slate-200 sm:text-base">
+            Explore the collection, compare your options, and find a vehicle that feels right for your next chapter.
+          </p>
+          <a className="hero-link mt-7 inline-flex items-center gap-2" href="#inventory">
+            Explore the collection <span aria-hidden="true">↓</span>
+          </a>
+        </div>
+        <div className="collection-hero__caption" aria-hidden="true">
+          A considered collection
+        </div>
       </section>
 
-      <section aria-label="Inventory filters" className="mb-6">
+      <section aria-label="Inventory filters" className="mb-7">
         <VehicleSearch onSearch={setFilters} />
       </section>
 
       {error && <div className="mb-5"><ErrorMessage message={error} /></div>}
-      {formOpen && (
+      {isAdmin && formOpen && !editing && (
         <div className="mb-6">
           <VehicleForm
-            initial={editing ?? undefined}
             onSubmit={saveVehicle}
             onCancel={() => {
               setFormOpen(false);
@@ -162,48 +175,107 @@ export function InventoryPage() {
           />
         </div>
       )}
+      {isAdmin && editing && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-ink/65 p-4 backdrop-blur-sm"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setEditing(null);
+          }}
+        >
+          <section
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="edit-vehicle-title"
+            className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-2xl bg-white p-5 shadow-2xl sm:p-7"
+          >
+            <div className="mb-5 overflow-hidden rounded-xl">
+              <img
+                className="h-40 w-full object-cover"
+                src={vehicleImageForCategory(editing.category)}
+                alt={`${editing.category} vehicle reference`}
+              />
+            </div>
+            <h2 id="edit-vehicle-title" className="sr-only">Edit vehicle details</h2>
+            <VehicleForm
+              key={editing.id}
+              initial={editing}
+              onSubmit={saveVehicle}
+              onCancel={() => setEditing(null)}
+            />
+          </section>
+        </div>
+      )}
 
-      <div className="mb-4 flex items-center justify-between">
-        <h2 className="text-lg font-bold text-ink">Available vehicles</h2>
-        {!loading && <span className="text-sm text-slate-500">{vehicles.length} {vehicles.length === 1 ? "vehicle" : "vehicles"}</span>}
-      </div>
-      {loading ? (
+      <section id="inventory" className="scroll-mt-8">
+        <div className="mb-5 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+          <div>
+            <p className="eyebrow">FIND YOUR FIT</p>
+            <h2 className="mt-1 text-2xl font-black tracking-tight text-ink">Available vehicles</h2>
+            {!loading && (
+              <p className="mt-1 text-sm text-slate-500">
+                {vehicles.length} {vehicles.length === 1 ? "vehicle" : "vehicles"} in this collection
+              </p>
+            )}
+          </div>
+          {isAdmin && !editing && (
+            <button
+              className="button-primary self-start sm:self-auto"
+              onClick={() => {
+                setEditing(null);
+                setFormOpen(true);
+              }}
+            >
+              + Add vehicle
+            </button>
+          )}
+        </div>
+        {notice && <p className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900" role="status">{notice}</p>}
+        {loading ? (
         <LoadingState />
       ) : vehicles.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-14 text-center">
+        <div className="rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-14 text-center shadow-card">
           <p className="text-lg font-bold text-ink">No vehicles match your search</p>
           <p className="mt-2 text-sm text-slate-500">Try another make, model, category, or price range.</p>
         </div>
       ) : (
-        <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+        <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
           {vehicles.map((vehicle) => (
             <div key={vehicle.id} className="min-w-0">
-              <VehicleCard vehicle={vehicle} onPurchase={purchase} busy={busyId === vehicle.id} />
-              <div className="mt-2 flex items-center justify-between px-1">
-                <button
-                  className="text-xs font-bold text-slate-600 underline decoration-slate-300 underline-offset-4 hover:text-ink"
-                  onClick={() => {
-                    setEditing(vehicle);
-                    setFormOpen(true);
-                  }}
-                >
-                  Edit details
-                </button>
-                {user?.role === "admin" && (
+              <VehicleCard
+                vehicle={vehicle}
+                {...(!isAdmin ? {
+                  onAddToCart: (selected: Vehicle) => addToCart(selected),
+                  cartQuantity: cart.lines.find((line) => line.vehicleId === vehicle.id)?.quantity ?? 0,
+                } : {})}
+              />
+              {isAdmin && (
+                <div className="mt-3 flex items-center justify-between px-1">
                   <button
-                    className="text-xs font-bold text-rose-700 underline decoration-rose-200 underline-offset-4"
-                    onClick={() => void remove(vehicle)}
+                    className="text-xs font-bold text-slate-600 underline decoration-slate-300 underline-offset-4 hover:text-ink"
+                    onClick={() => {
+                      setFormOpen(false);
+                      setEditing(vehicle);
+                    }}
                   >
-                    Delete
+                    Edit details
                   </button>
-                )}
-              </div>
-              {user?.role === "admin" && <StockControls vehicle={vehicle} onRestock={restock} />}
+                  <div className="flex items-center gap-4">
+                    <StockControls vehicle={vehicle} onRestock={restock} />
+                    <button
+                      className="text-xs font-bold text-rose-700 underline decoration-rose-200 underline-offset-4"
+                      onClick={() => void remove(vehicle)}
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           ))}
         </div>
       )}
-      <footer className="mt-14 border-t border-slate-200 py-5 text-center text-xs text-slate-400">
+      </section>
+      <footer className="mt-16 border-t border-slate-200 py-6 text-center text-xs text-slate-500">
         Inventory updates are reflected as soon as a purchase or restock is completed.
       </footer>
     </main>

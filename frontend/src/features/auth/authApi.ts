@@ -16,3 +16,11 @@ export function register(name: string, email: string, password: string): Promise
     body: { name, email, password },
   });
 }
+
+export async function getProfile(): Promise<{ user: AuthResponse["user"] }> {
+  return apiRequest("/auth/me");
+}
+
+export async function updateName(name: string): Promise<{ user: AuthResponse["user"] }> {
+  return apiRequest("/auth/me", { method: "PATCH", body: { name } });
+}

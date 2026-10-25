@@ -13,6 +13,14 @@ const migrations = [
       resolve(process.cwd(), "backend/src/db/migrations/001_initial_schema.sql"),
     ],
   },
+  {
+    version: "002_orders_and_vehicle_identity",
+    paths: [
+      resolve(currentDirectory, "migrations/002_orders_and_vehicle_identity.sql"),
+      resolve(currentDirectory, "../../src/db/migrations/002_orders_and_vehicle_identity.sql"),
+      resolve(process.cwd(), "backend/src/db/migrations/002_orders_and_vehicle_identity.sql"),
+    ],
+  },
 ];
 
 export function runMigrations(db: Database.Database): void {

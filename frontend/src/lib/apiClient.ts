@@ -15,9 +15,14 @@ export class ApiError extends Error {
 
 export async function apiRequest<T>(
   path: string,
-  options: { method?: string; body?: unknown; authenticated?: boolean } = {},
+  options: {
+    method?: string;
+    body?: unknown;
+    authenticated?: boolean;
+    headers?: Record<string, string>;
+  } = {},
 ): Promise<T> {
-  const headers: Record<string, string> = {};
+  const headers: Record<string, string> = { ...options.headers };
   if (options.body !== undefined) headers["Content-Type"] = "application/json";
   if (options.authenticated !== false) {
     const token = getToken();
