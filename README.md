@@ -150,7 +150,7 @@ I used GitHub Copilot in VS Code to help interpret the supplied kata requirement
 
 ## Prompt log
 
-`PROMPTS.md` preserves the original planning prompt and scope confirmation and includes a user-provided public ChatGPT link titled “JWT Secret Error Explained.” It does not contain a complete GitHub Copilot transcript. Public links should be checked for sensitive information before sharing; do not substitute summaries or reconstruct missing messages.
+`PROMPTS.md` preserves the original planning prompt and scope confirmation and includes a user-provided public ChatGPT link titled “JWT Secret Error Explained.” The shared page's conversation messages were not accessible when preparing the log, so no excerpts are transcribed; no complete GitHub Copilot transcript is included. Public links should be checked for sensitive information before sharing; do not substitute summaries or reconstruct missing messages.
 
 ## Git and AI co-authorship
 
